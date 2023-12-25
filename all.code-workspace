@@ -1,0 +1,20 @@
+{
+    "folders": [
+        {
+            "path": "./"
+        }
+    ],
+    "extensions": {
+        "recommendations": [
+            "donjayamanne.githistory",
+            "github.copilot",
+            "eamodio.gitlens",
+            "oderwat.indent-rainbow",
+            "github.vscode-pull-request-github",
+            "humao.rest-client"
+        ]
+    },
+    "settings": {
+        "editor.renderWhitespace": "boundary"
+    }
+}
