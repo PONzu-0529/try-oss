@@ -14,36 +14,82 @@ namespace TryOSS.Services
 {
     public class OSSService
     {
-        private readonly string bucketName = ConfigurationManager.AppSettings["BucketName"];
-        private readonly string region = ConfigurationManager.AppSettings["Region"];
-        private readonly string objectName = ConfigurationManager.AppSettings["ObjectName"];
-        private readonly string accessKey = ConfigurationManager.AppSettings["AccessKey"];
+        private readonly string bucketName;
+        private readonly string region;
+        private readonly string objectName;
+        private readonly string accessKey;
+        private readonly string secretKey;
+
+        public OSSService()
+        {
+            bucketName = ConfigurationManager.AppSettings["BucketName"];
+            region = ConfigurationManager.AppSettings["Region"];
+            objectName = ConfigurationManager.AppSettings["ObjectName"];
+            accessKey = ConfigurationManager.AppSettings["AccessKey"];
+            secretKey = ConfigurationManager.AppSettings["SecretKey"];
+        }
 
         public async Task GetObjectTagging()
         {
             var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
-
-            var generateSignatureRequest = new GenerateSignatureRequestModel()
-            {
-                AccessKeySecret = ConfigurationManager.AppSettings["SecretKey"],
-                Verb = HttpMethod.Get.ToString(),
-                ContentMD5 = "",
-                ContentType = "",
-                Date = date,
-                CanonicalizedOSSHeaders = "",
-                CanonicalizedResource = $"/{bucketName}/{objectName}?tagging"
-            };
-
-            var signature = OSSAPIHelper.GenerateSignature(generateSignatureRequest);
+            var canonicalizedResource = $"/{bucketName}/{objectName}?tagging";
+            var signature = GenerateSignature(HttpMethod.Get, date, canonicalizedResource);
 
             using var client = new HttpClient();
-
-            var request = new HttpRequestMessage(HttpMethod.Get, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
-
-            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
-            request.Headers.Add("Date", date);
+            var request = CreateHttpRequest(HttpMethod.Get, date, canonicalizedResource, signature);
 
             var response = await client.SendAsync(request);
+            await ProcessResponse(response);
+        }
+
+        public async Task PutObjectTagging()
+        {
+            var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
+            var contentType = "application/xml";
+            var canonicalizedResource = $"/{bucketName}/{objectName}?tagging";
+            var signature = GenerateSignature(HttpMethod.Put, date, canonicalizedResource);
+
+            using var client = new HttpClient();
+            var request = CreateHttpRequest(HttpMethod.Put, date, canonicalizedResource, signature);
+
+            AddTaggingContent(request, contentType);
+
+            var response = await client.SendAsync(request);
+            await ProcessResponse(response);
+        }
+
+        private string GenerateSignature(HttpMethod httpMethod, string date, string canonicalizedResource)
+        {
+            var generateSignatureRequest = new GenerateSignatureRequestModel()
+            {
+                AccessKeySecret = secretKey,
+                Verb = httpMethod.ToString(),
+                ContentMD5 = "",
+                ContentType = httpMethod == HttpMethod.Put ? "application/xml" : "",
+                Date = date,
+                CanonicalizedOSSHeaders = "",
+                CanonicalizedResource = canonicalizedResource
+            };
+
+            return OSSAPIHelper.GenerateSignature(generateSignatureRequest);
+        }
+
+        private HttpRequestMessage CreateHttpRequest(HttpMethod httpMethod, string date, string canonicalizedResource, string signature)
+        {
+            var request = new HttpRequestMessage(httpMethod, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
+            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
+            request.Headers.Add("Date", date);
+            return request;
+        }
+
+        private void AddTaggingContent(HttpRequestMessage request, string contentType)
+        {
+            request.Content = new StringContent($"<Tagging><TagSet><Tag><Key>RegisterDate</Key><Value>{DateTime.Now.ToString("yyyyMMddHHmmss")}</Value></Tag></TagSet></Tagging>");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        }
+
+        private async Task ProcessResponse(HttpResponseMessage response)
+        {
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -54,47 +100,6 @@ namespace TryOSS.Services
             else
             {
                 Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}, Error Message: {responseBody}");
-            }
-        }
-
-        public async Task PutObjectTagging()
-        {
-            var contentType = "application/xml";
-            var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
-
-            var generateSignatureRequest = new GenerateSignatureRequestModel()
-            {
-                AccessKeySecret = ConfigurationManager.AppSettings["SecretKey"],
-                Verb = HttpMethod.Put.ToString(),
-                ContentMD5 = "",
-                ContentType = contentType,
-                Date = date,
-                CanonicalizedOSSHeaders = "",
-                CanonicalizedResource = $"/{bucketName}/{objectName}?tagging"
-            };
-
-            var signature = OSSAPIHelper.GenerateSignature(generateSignatureRequest);
-
-            using var client = new HttpClient();
-
-            var request = new HttpRequestMessage(HttpMethod.Put, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
-
-            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
-            request.Headers.Add("Date", date);
-
-            request.Content = new StringContent($"<Tagging><TagSet><Tag><Key>RegisterDate</Key><Value>{DateTime.Now.ToString("yyyyMMddHHmmss")}</Value></Tag></TagSet></Tagging>");
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-
-            var response = await client.SendAsync(request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}");
-            }
-            else
-            {
-                var errorMessage = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}, Error Message: {errorMessage}");
             }
         }
     }
