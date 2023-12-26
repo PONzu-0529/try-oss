@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 using TryOSS.Helpers;
@@ -13,49 +14,88 @@ namespace TryOSS.Services
 {
     public class OSSService
     {
+        private readonly string bucketName = ConfigurationManager.AppSettings["BucketName"];
+        private readonly string region = ConfigurationManager.AppSettings["Region"];
+        private readonly string objectName = ConfigurationManager.AppSettings["ObjectName"];
+        private readonly string accessKey = ConfigurationManager.AppSettings["AccessKey"];
+
         public async Task GetObjectTagging()
         {
-            // 指定された情報
-            var url = $"https://{ConfigurationManager.AppSettings["BucketName"]}.{ConfigurationManager.AppSettings["Region"]}.aliyuncs.com/{ConfigurationManager.AppSettings["ObjectName"]}?tagging";
-            var accessKey = ConfigurationManager.AppSettings["AccessKey"];
             var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
 
             var generateSignatureRequest = new GenerateSignatureRequestModel()
             {
                 AccessKeySecret = ConfigurationManager.AppSettings["SecretKey"],
-                Verb = "GET",
+                Verb = HttpMethod.Get.ToString(),
                 ContentMD5 = "",
                 ContentType = "",
                 Date = date,
                 CanonicalizedOSSHeaders = "",
-                CanonicalizedResource = $"/{ConfigurationManager.AppSettings["BucketName"]}/{ConfigurationManager.AppSettings["ObjectName"]}?tagging"
+                CanonicalizedResource = $"/{bucketName}/{objectName}?tagging"
             };
 
             var signature = OSSAPIHelper.GenerateSignature(generateSignatureRequest);
 
-            // HttpClientのインスタンスを作成
-            using HttpClient client = new HttpClient();
-            // Authorizationヘッダーの作成
-            string authorizationHeader = $"OSS {accessKey}:{signature}";
+            using var client = new HttpClient();
 
-            // HTTPリクエストの作成
-            HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("Authorization", authorizationHeader);
+            var request = new HttpRequestMessage(HttpMethod.Get, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
+
+            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
             request.Headers.Add("Date", date);
 
-            //// Content-Type ヘッダーの設定
-            //request.Content = new StringContent("");
-            //request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/xml");
+            var response = await client.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
 
-            // HTTPリクエストの送信
-            HttpResponseMessage response = await client.SendAsync(request);
+            if (response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}");
+                Debug.WriteLine($"ResponseBody:\n{responseBody}");
+            }
+            else
+            {
+                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}, Error Message: {responseBody}");
+            }
+        }
 
-            // レスポンスの読み取り
-            string responseBody = await response.Content.ReadAsStringAsync();
+        public async Task PutObjectTagging()
+        {
+            var contentType = "application/xml";
+            var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
 
-            // 結果の表示
-            Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}");
-            Debug.WriteLine($"ResponseBody:\n{responseBody}");
+            var generateSignatureRequest = new GenerateSignatureRequestModel()
+            {
+                AccessKeySecret = ConfigurationManager.AppSettings["SecretKey"],
+                Verb = HttpMethod.Put.ToString(),
+                ContentMD5 = "",
+                ContentType = contentType,
+                Date = date,
+                CanonicalizedOSSHeaders = "",
+                CanonicalizedResource = $"/{bucketName}/{objectName}?tagging"
+            };
+
+            var signature = OSSAPIHelper.GenerateSignature(generateSignatureRequest);
+
+            using var client = new HttpClient();
+
+            var request = new HttpRequestMessage(HttpMethod.Put, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
+
+            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
+            request.Headers.Add("Date", date);
+
+            request.Content = new StringContent($"<Tagging><TagSet><Tag><Key>RegisterDate</Key><Value>{DateTime.Now.ToString("yyyyMMddHHmmss")}</Value></Tag></TagSet></Tagging>");
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+
+            var response = await client.SendAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}");
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}, Error Message: {errorMessage}");
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ namespace TryOSS
         public static async Task Main()
         {
             var service = new OSSService();
+            await service.PutObjectTagging();
             await service.GetObjectTagging();
         }
     }
