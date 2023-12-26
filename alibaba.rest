@@ -1,0 +1,26 @@
+@region=
+@access_key=
+@bucket_name=
+@object_name=
+@signature=
+@date=
+
+### Get Object Tagging
+GET https://{{bucket_name}}.{{region}}.aliyuncs.com/{{object_name}}?tagging
+Authorization: OSS {{access_key}}:{{signature}}
+Date: {{date}}
+
+### Put Object Tagging
+PUT https://{{bucket_name}}.{{region}}.aliyuncs.com/{{object_name}}?tagging
+Authorization: OSS {{access_key}}:{{signature}}
+Content-Type: application/xml
+Date: {{date}}
+
+<Tagging>
+  <TagSet>
+    <Tag>
+      <Key>Key</Key>
+      <Value>Value</Value>
+    </Tag>
+  </TagSet>
+</Tagging>
