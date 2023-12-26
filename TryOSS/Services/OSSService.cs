@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -9,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using TryOSS.Helpers;
 using TryOSS.Models;
+using System.Xml.Serialization;
 
 namespace TryOSS.Services
 {
@@ -45,14 +47,16 @@ namespace TryOSS.Services
         public async Task PutObjectTagging()
         {
             var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
-            var contentType = "application/xml";
             var canonicalizedResource = $"/{bucketName}/{objectName}?tagging";
             var signature = GenerateSignature(HttpMethod.Put, date, canonicalizedResource);
 
             using var client = new HttpClient();
             var request = CreateHttpRequest(HttpMethod.Put, date, canonicalizedResource, signature);
 
-            AddTaggingContent(request, contentType);
+            AddTaggingContent(request, "application/xml", new List<Tag>
+            {
+                new Tag { Key = "RegisterDate", Value = DateTime.Now.ToString("yyyyMMddHHmmss") }
+            });
 
             var response = await client.SendAsync(request);
             await ProcessResponse(response);
@@ -82,10 +86,34 @@ namespace TryOSS.Services
             return request;
         }
 
-        private void AddTaggingContent(HttpRequestMessage request, string contentType)
+        private void AddTaggingContent(HttpRequestMessage request, string contentType, List<Tag> tags)
         {
-            request.Content = new StringContent($"<Tagging><TagSet><Tag><Key>RegisterDate</Key><Value>{DateTime.Now.ToString("yyyyMMddHHmmss")}</Value></Tag></TagSet></Tagging>");
+            string xmlContent = ConvertListToXml(tags);
+
+            request.Content = new StringContent(xmlContent);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+        }
+
+        private string ConvertListToXml(List<Tag> tags)
+        {
+            var tagging = new Tagging { TagSet = tags };
+
+            var serializer = new XmlSerializer(typeof(Tagging));
+
+            using StringWriter stringWriter = new StringWriter();
+            serializer.Serialize(stringWriter, tagging);
+            return stringWriter.ToString();
+        }
+
+        public class Tag
+        {
+            public string Key { get; set; }
+            public string Value { get; set; }
+        }
+
+        public class Tagging
+        {
+            public List<Tag> TagSet { get; set; }
         }
 
         private async Task ProcessResponse(HttpResponseMessage response)
