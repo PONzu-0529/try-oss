@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -18,5 +19,7 @@ namespace TryOSS.Models
         public string BucketName { get; set; }
 
         public string ObjectName { get; set; }
+
+        public List<NameValueCollection> OssHeaders { get; set; }
     }
 }

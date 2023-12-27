@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -22,13 +23,15 @@ namespace TryOSS.Helpers
             var signature = GenerateSignature(
                 requestModel: model,
                 verb: httpMethod,
-                date: date);
+                date: date,
+                ossHeaders: model.OssHeaders);
 
             var request = CreateHttpRequest(
                 requestModel: model,
                 httpMethod: httpMethod,
                 date: date,
-                signature: signature);
+                signature: signature,
+                ossHeaders: model.OssHeaders);
 
             return request;
         }
@@ -44,33 +47,59 @@ namespace TryOSS.Helpers
                 requestModel: model,
                 verb: httpMethod,
                 date: date,
+                contentMD5: contentMD5,
                 contentType: contentType,
-                contentMD5: contentMD5);
+                ossHeaders: model.OssHeaders);
 
             var request = CreateHttpRequest(
                 requestModel: model,
                 httpMethod: httpMethod,
                 date: date,
-                signature: signature);
+                signature: signature,
+                ossHeaders: model.OssHeaders);
 
             AddTaggingContent(request, contentType, tags);
 
             return request;
         }
+
+        private static string ConvertToOSSHeaders(List<NameValueCollection> ossHeaders)
+        {
+            if (ossHeaders == null)
+            {
+                return string.Empty;
+            }
+
+            var stringBuilder = new StringBuilder();
+
+            foreach (var headers in ossHeaders)
+            {
+                foreach (var key in headers.AllKeys)
+                {
+                    var value = headers[key];
+                    stringBuilder.Append($"{key}:{value}\n");
+                }
+            }
+
+            return stringBuilder.ToString();
+        }
+
         private static string GenerateSignature(
             ObjectTaggingRequestModel requestModel,
             HttpMethod verb,
             DateTime date,
             string contentMD5 = "",
             string contentType = "",
-            string canonicalizedOSSHeaders = "")
+            List<NameValueCollection> ossHeaders = null)
         {
+            var canonicalizedOSSHeaders = ConvertToOSSHeaders(ossHeaders);
+
             // Construct the string to sign
-            string stringToSign = $"{verb}\n{contentMD5}\n{contentType}\n{date:ddd, dd MMM yyyy HH:mm:ss 'GMT'}\n{canonicalizedOSSHeaders}/{requestModel.BucketName}/{requestModel.ObjectName}?tagging";
+            var stringToSign = $"{verb}\n{contentMD5}\n{contentType}\n{date:ddd, dd MMM yyyy HH:mm:ss 'GMT'}\n{canonicalizedOSSHeaders}/{requestModel.BucketName}/{requestModel.ObjectName}?tagging";
 
             // Generate the HMAC-SHA1 signature
             using var hmacsha1 = new HMACSHA1(Encoding.UTF8.GetBytes(requestModel.SecretKey));
-            byte[] signatureBytes = hmacsha1.ComputeHash(Encoding.UTF8.GetBytes(stringToSign));
+            var signatureBytes = hmacsha1.ComputeHash(Encoding.UTF8.GetBytes(stringToSign));
 
             // Base64 encode the signature
             return Convert.ToBase64String(signatureBytes);
@@ -80,12 +109,26 @@ namespace TryOSS.Helpers
             ObjectTaggingRequestModel requestModel,
             HttpMethod httpMethod,
             DateTime date,
-            string signature)
+            string signature,
+            List<NameValueCollection> ossHeaders = null)
         {
             var request = new HttpRequestMessage(httpMethod, $"https://{requestModel.BucketName}.{requestModel.Region}.aliyuncs.com/{requestModel.ObjectName}?tagging");
 
             request.Headers.Add("Authorization", $"OSS {requestModel.AccessKey}:{signature}");
             request.Headers.Add("Date", date.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'"));
+
+            // Add Custom X-OSS Headers
+            if (ossHeaders != null)
+            {
+                foreach (var headers in ossHeaders)
+                {
+                    foreach (var key in headers.AllKeys)
+                    {
+                        var value = headers[key];
+                        request.Headers.Add(key, value);
+                    }
+                }
+            }
 
             return request;
         }
@@ -95,7 +138,7 @@ namespace TryOSS.Helpers
             string contentType, 
             List<Tag> tags)
         {
-            string xmlContent = ConvertListToXml(tags);
+            var xmlContent = ConvertListToXml(tags);
 
             request.Content = new StringContent(xmlContent);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
@@ -104,10 +147,10 @@ namespace TryOSS.Helpers
 
         private static string CalculateMd5Hash(List<Tag> tags)
         {
-            string xmlContent = ConvertListToXml(tags);
+            var xmlContent = ConvertListToXml(tags);
 
             using var md5 = MD5.Create();
-            byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(xmlContent));
+            var hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(xmlContent));
             return Convert.ToBase64String(hashBytes);
         }
 
@@ -117,7 +160,7 @@ namespace TryOSS.Helpers
 
             var serializer = new XmlSerializer(typeof(Tagging));
 
-            using StringWriter stringWriter = new StringWriter();
+            using var stringWriter = new StringWriter();
             serializer.Serialize(stringWriter, tagging);
             return stringWriter.ToString();
         }
