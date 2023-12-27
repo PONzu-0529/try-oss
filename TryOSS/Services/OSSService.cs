@@ -33,14 +33,15 @@ namespace TryOSS.Services
 
         public async Task GetObjectTagging()
         {
-            var request = OSSAPIHelper.GenerateGetObjectTaggingRequest(new ObjectTaggingRequestModel
+            var requestModel = new ObjectTaggingRequestModel
             {
                 AccessKey = accessKey,
                 SecretKey = secretKey,
                 Region = region,
                 BucketName = bucketName,
                 ObjectName = objectName
-            });
+            };
+            var request = OSSAPIHelper.GenerateGetObjectTaggingRequest(requestModel);
 
             using var client = new HttpClient();
             var response = await client.SendAsync(request);
@@ -49,17 +50,19 @@ namespace TryOSS.Services
 
         public async Task PutObjectTagging()
         {
-            var request = OSSAPIHelper.GeneratePubObjectTaggingRequest(new ObjectTaggingRequestModel
+            var requestModel = new ObjectTaggingRequestModel
             {
                 AccessKey = accessKey,
                 SecretKey = secretKey,
                 Region = region,
                 BucketName = bucketName,
                 ObjectName = objectName
-            }, new List<OSSAPIHelper.Tag>
+            };
+            var tags = new List<OSSAPIHelper.Tag>
             {
                 new OSSAPIHelper.Tag { Key = "RegisterDate", Value = DateTime.Now.ToString("yyyyMMddHHmmss") }
-            });
+            };
+            var request = OSSAPIHelper.GeneratePubObjectTaggingRequest(requestModel, tags);
 
             using var client = new HttpClient();
             var response = await client.SendAsync(request);

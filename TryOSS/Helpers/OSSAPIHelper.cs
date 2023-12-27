@@ -38,13 +38,14 @@ namespace TryOSS.Helpers
             var date = DateTime.UtcNow;
             var httpMethod = HttpMethod.Put;
             var contentType = "application/xml";
+            var contentMD5 = CalculateMd5Hash(tags);
 
             var signature = GenerateSignature(
                 requestModel: model,
                 verb: httpMethod,
                 date: date,
                 contentType: contentType,
-                contentMD5: "");
+                contentMD5: contentMD5);
 
             var request = CreateHttpRequest(
                 requestModel: model,
@@ -89,12 +90,25 @@ namespace TryOSS.Helpers
             return request;
         }
 
-        private static void AddTaggingContent(HttpRequestMessage request, string contentType, List<Tag> tags)
+        private static void AddTaggingContent(
+            HttpRequestMessage request, 
+            string contentType, 
+            List<Tag> tags)
         {
             string xmlContent = ConvertListToXml(tags);
 
             request.Content = new StringContent(xmlContent);
             request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
+            request.Content.Headers.ContentMD5 = Convert.FromBase64String(CalculateMd5Hash(tags));
+        }
+
+        private static string CalculateMd5Hash(List<Tag> tags)
+        {
+            string xmlContent = ConvertListToXml(tags);
+
+            using var md5 = MD5.Create();
+            byte[] hashBytes = md5.ComputeHash(Encoding.UTF8.GetBytes(xmlContent));
+            return Convert.ToBase64String(hashBytes);
         }
 
         private static string ConvertListToXml(List<Tag> tags)
