@@ -77,7 +77,7 @@ namespace TryOSS.Helpers
                 foreach (var key in headers.AllKeys)
                 {
                     var value = headers[key];
-                    stringBuilder.Append($"{key}:{value}\n");
+                    stringBuilder.Append($"{key.ToLower()}:{value}\n");
                 }
             }
 
