@@ -39,6 +39,7 @@
   <ItemGroup>
     <Compile Include="Helpers\OSSAPIHelper.cs" />
     <Compile Include="Models\GenerateSignatureRequestModel.cs" />
+    <Compile Include="Models\ObjectTaggingRequestModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Services\OSSService.cs" />
   </ItemGroup>

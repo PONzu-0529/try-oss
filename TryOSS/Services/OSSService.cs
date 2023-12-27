@@ -33,87 +33,37 @@ namespace TryOSS.Services
 
         public async Task GetObjectTagging()
         {
-            var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
-            var canonicalizedResource = $"/{bucketName}/{objectName}?tagging";
-            var signature = GenerateSignature(HttpMethod.Get, date, canonicalizedResource);
+            var request = OSSAPIHelper.GenerateGetObjectTaggingRequest(new ObjectTaggingRequestModel
+            {
+                AccessKey = accessKey,
+                SecretKey = secretKey,
+                Region = region,
+                BucketName = bucketName,
+                ObjectName = objectName
+            });
 
             using var client = new HttpClient();
-            var request = CreateHttpRequest(HttpMethod.Get, date, canonicalizedResource, signature);
-
             var response = await client.SendAsync(request);
             await ProcessResponse(response);
         }
 
         public async Task PutObjectTagging()
         {
-            var date = DateTime.UtcNow.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'");
-            var canonicalizedResource = $"/{bucketName}/{objectName}?tagging";
-            var signature = GenerateSignature(HttpMethod.Put, date, canonicalizedResource);
-
-            using var client = new HttpClient();
-            var request = CreateHttpRequest(HttpMethod.Put, date, canonicalizedResource, signature);
-
-            AddTaggingContent(request, "application/xml", new List<Tag>
+            var request = OSSAPIHelper.GeneratePubObjectTaggingRequest(new ObjectTaggingRequestModel
             {
-                new Tag { Key = "RegisterDate", Value = DateTime.Now.ToString("yyyyMMddHHmmss") }
+                AccessKey = accessKey,
+                SecretKey = secretKey,
+                Region = region,
+                BucketName = bucketName,
+                ObjectName = objectName
+            }, new List<OSSAPIHelper.Tag>
+            {
+                new OSSAPIHelper.Tag { Key = "RegisterDate", Value = DateTime.Now.ToString("yyyyMMddHHmmss") }
             });
 
+            using var client = new HttpClient();
             var response = await client.SendAsync(request);
             await ProcessResponse(response);
-        }
-
-        private string GenerateSignature(HttpMethod httpMethod, string date, string canonicalizedResource)
-        {
-            var generateSignatureRequest = new GenerateSignatureRequestModel()
-            {
-                AccessKeySecret = secretKey,
-                Verb = httpMethod.ToString(),
-                ContentMD5 = "",
-                ContentType = httpMethod == HttpMethod.Put ? "application/xml" : "",
-                Date = date,
-                CanonicalizedOSSHeaders = "",
-                CanonicalizedResource = canonicalizedResource
-            };
-
-            return OSSAPIHelper.GenerateSignature(generateSignatureRequest);
-        }
-
-        private HttpRequestMessage CreateHttpRequest(HttpMethod httpMethod, string date, string canonicalizedResource, string signature)
-        {
-            var request = new HttpRequestMessage(httpMethod, $"https://{bucketName}.{region}.aliyuncs.com/{objectName}?tagging");
-            request.Headers.Add("Authorization", $"OSS {accessKey}:{signature}");
-            request.Headers.Add("Date", date);
-            return request;
-        }
-
-        private void AddTaggingContent(HttpRequestMessage request, string contentType, List<Tag> tags)
-        {
-            string xmlContent = ConvertListToXml(tags);
-
-            request.Content = new StringContent(xmlContent);
-            request.Content.Headers.ContentType = new MediaTypeHeaderValue(contentType);
-        }
-
-        private string ConvertListToXml(List<Tag> tags)
-        {
-            var tagging = new Tagging { TagSet = tags };
-
-            var serializer = new XmlSerializer(typeof(Tagging));
-
-            using StringWriter stringWriter = new StringWriter();
-            serializer.Serialize(stringWriter, tagging);
-            return stringWriter.ToString();
-        }
-
-        public class Tag
-        {
-            public string Key { get; set; }
-            public string Value { get; set; }
-        }
-
-        public class Tagging
-        {
-            public List<Tag> TagSet { get; set; }
         }
 
         private async Task ProcessResponse(HttpResponseMessage response)
