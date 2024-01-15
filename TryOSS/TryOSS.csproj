@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Helpers\OSSAPIHelper.cs" />
+    <Compile Include="Models\HttpResponseException.cs" />
     <Compile Include="Models\ObjectTaggingRequestModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Services\OSSService.cs" />

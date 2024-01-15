@@ -32,38 +32,64 @@ namespace TryOSS.Services
 
         public async Task GetObjectTagging(string objectName, List<NameValueCollection> ossHeaders = null)
         {
-            var requestModel = new ObjectTaggingRequestModel
+            try
             {
-                AccessKey = accessKey,
-                SecretKey = secretKey,
-                Region = region,
-                BucketName = bucketName,
-                ObjectName = objectName,
-                OssHeaders = ossHeaders
-            };
-            var request = OSSAPIHelper.GenerateGetObjectTaggingRequest(requestModel);
+                var requestModel = new ObjectTaggingRequestModel
+                {
+                    AccessKey = accessKey,
+                    SecretKey = secretKey,
+                    Region = region,
+                    BucketName = bucketName,
+                    ObjectName = objectName,
+                    OssHeaders = ossHeaders
+                };
+                var request = OSSAPIHelper.GenerateGetObjectTaggingRequest(requestModel);
 
-            using var client = new HttpClient();
-            var response = await client.SendAsync(request);
-            await ProcessResponse(response);
+                using var client = new HttpClient();
+                var response = await client.SendAsync(request);
+                await ProcessResponse(response);
+            }
+            catch (HttpResponseException ex)
+            {
+                Debug.WriteLine($"HTTP StatusCode: {ex.StatusCode}");
+                Debug.WriteLine($"ResponseBody:\n{ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task PutObjectTagging(string objectName, List<OSSAPIHelper.Tag> tags, List<NameValueCollection> ossHeaders = null)
         {
-            var requestModel = new ObjectTaggingRequestModel
+            try
             {
-                AccessKey = accessKey,
-                SecretKey = secretKey,
-                Region = region,
-                BucketName = bucketName,
-                ObjectName = objectName,
-                OssHeaders = ossHeaders
-            };
-            var request = OSSAPIHelper.GeneratePubObjectTaggingRequest(requestModel, tags);
+                var requestModel = new ObjectTaggingRequestModel
+                {
+                    AccessKey = accessKey,
+                    SecretKey = secretKey,
+                    Region = region,
+                    BucketName = bucketName,
+                    ObjectName = objectName,
+                    OssHeaders = ossHeaders
+                };
+                var request = OSSAPIHelper.GeneratePubObjectTaggingRequest(requestModel, tags);
 
-            using var client = new HttpClient();
-            var response = await client.SendAsync(request);
-            await ProcessResponse(response);
+                using var client = new HttpClient();
+                var response = await client.SendAsync(request);
+                await ProcessResponse(response);
+            }
+            catch (HttpResponseException ex)
+            {
+                Debug.WriteLine($"HTTP StatusCode: {ex.StatusCode}");
+                Debug.WriteLine($"ResponseBody:\n{ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Exception: {ex.Message}");
+                throw;
+            }
         }
 
         private async Task ProcessResponse(HttpResponseMessage response)
@@ -77,7 +103,7 @@ namespace TryOSS.Services
             }
             else
             {
-                Debug.WriteLine($"HTTP StatusCode: {response.StatusCode}, Error Message: {responseBody}");
+                throw new HttpResponseException(response.StatusCode, responseBody);
             }
         }
     }
