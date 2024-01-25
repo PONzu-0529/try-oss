@@ -21,13 +21,15 @@ namespace TryOSS.Services
         private readonly string secretKey;
         private readonly string bucketName;
         private readonly string region;
+        private readonly string endpoint;
 
         public OSSService()
         {
-            bucketName = ConfigurationManager.AppSettings["BucketName"];
-            region = ConfigurationManager.AppSettings["Region"];
             accessKey = ConfigurationManager.AppSettings["AccessKey"];
             secretKey = ConfigurationManager.AppSettings["SecretKey"];
+            bucketName = ConfigurationManager.AppSettings["BucketName"];
+            region = ConfigurationManager.AppSettings["Region"];
+            endpoint = ConfigurationManager.AppSettings["Endpoint"];
         }
 
         public async Task GetObjectTagging(string objectName, List<NameValueCollection> ossHeaders = null)
@@ -39,6 +41,7 @@ namespace TryOSS.Services
                     AccessKey = accessKey,
                     SecretKey = secretKey,
                     Region = region,
+                    Endpoint = endpoint,
                     BucketName = bucketName,
                     ObjectName = objectName,
                     OssHeaders = ossHeaders
@@ -70,6 +73,7 @@ namespace TryOSS.Services
                     AccessKey = accessKey,
                     SecretKey = secretKey,
                     Region = region,
+                    Endpoint = endpoint,
                     BucketName = bucketName,
                     ObjectName = objectName,
                     OssHeaders = ossHeaders

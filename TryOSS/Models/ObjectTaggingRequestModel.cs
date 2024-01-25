@@ -16,6 +16,8 @@ namespace TryOSS.Models
 
         public string Region { get; set; }
 
+        public string Endpoint { get; set; }
+
         public string BucketName { get; set; }
 
         public string ObjectName { get; set; }

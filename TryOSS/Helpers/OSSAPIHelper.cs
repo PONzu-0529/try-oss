@@ -52,7 +52,7 @@ namespace TryOSS.Helpers
                 contentType: contentType,
                 ossHeaders: ossHeaders);
 
-            var request = new HttpRequestMessage(httpMethod, $"https://{requestModel.BucketName}.{requestModel.Region}.aliyuncs.com/{requestModel.ObjectName}?tagging");
+            var request = new HttpRequestMessage(httpMethod, $"http://{requestModel.Endpoint}/{requestModel.BucketName}/{requestModel.ObjectName}?tagging");
 
             request.Headers.Add("Authorization", $"OSS {requestModel.AccessKey}:{signature}");
             request.Headers.Add("Date", date.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'", CultureInfo.InvariantCulture));
@@ -87,7 +87,7 @@ namespace TryOSS.Helpers
             var canonicalizedOSSHeaders = ConvertToOSSHeaders(ossHeaders);
 
             // Construct the string to sign
-            var stringToSign = $"{verb}\n{contentMD5}\n{contentType}\n{date.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'", CultureInfo.InvariantCulture)}\n{canonicalizedOSSHeaders}/{requestModel.BucketName}/{requestModel.ObjectName}?tagging";
+            var stringToSign = $"{verb}\n{contentMD5}\n{contentType}\n{date.ToString("ddd, dd MMM yyyy HH:mm:ss 'GMT'", CultureInfo.InvariantCulture)}\n{canonicalizedOSSHeaders}/{requestModel.BucketName}/{requestModel.BucketName}/{requestModel.ObjectName}?tagging";
 
             // Generate the HMAC-SHA1 signature
             using var hmacsha1 = new HMACSHA1(Encoding.UTF8.GetBytes(requestModel.SecretKey));
