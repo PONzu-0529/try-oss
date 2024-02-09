@@ -4,6 +4,7 @@
 @object_name=
 @signature=
 @date=
+@time=
 
 ### Get Object Tagging
 GET https://{{bucket_name}}.{{region}}.aliyuncs.com/{{object_name}}?tagging
@@ -24,3 +25,26 @@ Date: {{date}}
     </Tag>
   </TagSet>
 </Tagging>
+
+### KSM: ListSecrets
+
+GET https://kms.{{region}}.aliyuncs.com/?Action=ListSecrets
+&AccessKeyId={{access_key}}
+&Format=json
+&Signature={{signature}}
+&SignatureMethod=HMAC-SHA1
+&SignatureVersion=1.0
+&Timestamp={{time}}
+&Version=2016-01-20
+
+### KSM: GetSecretValue
+
+GET https://kms.{{region}}.aliyuncs.com/?Action=GetSecretValue
+&SecretName=DummySecret
+&AccessKeyId={{access_key}}
+&Format=json
+&Signature={{signature}}
+&SignatureMethod=HMAC-SHA1
+&SignatureVersion=1.0
+&Timestamp={{time}}
+&Version=2016-01-20
